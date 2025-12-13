@@ -1,0 +1,25 @@
+{
+	"IDAMetadataDescriptorVersion": 1,
+	"plugin": {
+		"name": "IDA Guides",
+		"entryPoint": "main.py",
+		"version": "1.0.0",
+		"description": "Display indent guides in Hex-Rays Decompiler.",
+		"logoPath": "icon.png",
+		"license": "MIT",
+		"categories": [
+			"ui-ux-and-visualization"
+		],
+		"urls": {
+			"repository": "https://github.com/libtero/idaguides"
+		},
+		"authors": [{
+			"name": "tero",
+			"email": "arttson@gmail.com"
+		}],
+		"keywords": [
+			"indent-guides",
+			"decompiler"
+		]
+	}
+}
