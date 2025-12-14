@@ -52,7 +52,8 @@ def count_indents(lines: list[str]) -> list[int]:
 	indent = 0
 	singleshot = 0
 	switchtrace = list()
-	
+	colontrace = False
+
 	for i in range(len(lines) - 1):
 		levels[i] = max(indent, 0) + singleshot
 		singleshot = 0
@@ -60,10 +61,16 @@ def count_indents(lines: list[str]) -> list[int]:
 		nextln = lines[i + 1]
 		prevln = lines[i - 1]
 
-		
+		if colontrace and ln.endswith(";"):
+			indent -= 1
+			colontrace = False
+
 		if ln.startswith(("if", "else", "do")):
 			if not nextln.startswith("{") and nextln.endswith(";"):
 				singleshot = 1
+			elif not len(nextln):
+				colontrace = True
+				indent += 1
 
 		elif ln.startswith("for") and ln.endswith(")"):
 			if not nextln.startswith("{"):
