@@ -1,5 +1,8 @@
+import ida_hexrays
+import ida_lines
+import ida_diskio
+import idaapi
 from pathlib import Path
-import ida_hexrays, idaapi, ida_lines, ida_diskio
 
 
 INDENT_CHAR = "¦"
@@ -18,15 +21,7 @@ class Line():
 
 	@property
 	def LINE(self):
-		return self.char + " " * (self.indent - 1)
-	
-	@property
-	def COLOR(self):
-		return "\x01" + "\x04"
-
-	@property
-	def NLINE(self):
-		return self.COLOR + self.LINE
+		return ida_lines.COLSTR(self.char + " " * (self.indent - 1), ida_lines.SCOLOR_AUTOCMT)
 
 
 def get_usr_indent() -> int:
@@ -53,7 +48,7 @@ def count_indents(lines: list[str]) -> list[int]:
 	singleshot = 0
 	switchtrace = list()
 	colontrace = False
-
+	
 	for i in range(len(lines) - 1):
 		levels[i] = max(indent, 0) + singleshot
 		singleshot = 0
@@ -64,7 +59,7 @@ def count_indents(lines: list[str]) -> list[int]:
 		if colontrace and ln.endswith(";"):
 			indent -= 1
 			colontrace = False
-
+		
 		if ln.startswith(("if", "else", "do")):
 			if not nextln.startswith("{") and nextln.endswith(";"):
 				singleshot = 1
@@ -120,7 +115,7 @@ def get_label_insert(line: str, indent: int) -> str:
 		return str()
 	pad = Liner.indent - (line_len % Liner.indent)
 	count = indent - 1 - (line_len // Liner.indent)
-	return Liner.COLOR + " " * pad + Liner.LINE * count
+	return ida_lines.COLSTR(" " * pad + Liner.LINE * count, ida_lines.SCOLOR_AUTOCMT)
 
 
 def draw_lines(cfunc: ida_hexrays.cfunc_t):
@@ -136,7 +131,7 @@ def draw_lines(cfunc: ida_hexrays.cfunc_t):
 		elif is_empty_ln(line.line):
 			line.line += Liner.GAP * indents[i]
 		
-		line.line = line.line.replace(Liner.GAP, Liner.NLINE, indents[i]).replace(Liner.LINE, Liner.GAP, n)
+		line.line = line.line.replace(Liner.GAP, Liner.LINE, indents[i]).replace(Liner.LINE, Liner.GAP, n)
 
 
 class IDAGuides(ida_hexrays.Hexrays_Hooks):
