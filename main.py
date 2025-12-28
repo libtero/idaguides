@@ -80,6 +80,13 @@ def count_indents(lines: list[str]) -> list[int]:
 				if not prevln.startswith("switch") and not prevln.endswith(";"):
 					indent += 1
 
+			elif ln.endswith(":") and prevln.startswith(("if", "else", "do", "for")):
+				if nextln.endswith(";"):
+					singleshot = 1
+				else:
+					colontrace = True
+					indent += 1
+
 		if nextln.startswith("case") and nextln.endswith(":"):
 			singleshot = -1
 
