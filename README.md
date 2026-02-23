@@ -14,7 +14,7 @@ Small plugin for IDA that adds indent guides to the decompiler view.
 
 ## Tested With
 
-- IDA 9.2
+- IDA 9.2, 9.3
 
 
 ## Notes
