@@ -1,11 +1,13 @@
 import ida_hexrays
 import ida_lines
 import ida_diskio
+import ida_kernwin
 import idaapi
 from pathlib import Path
 
 
-INDENT_CHAR = "¦"
+INDENT_CHAR = "┊"
+ENABLE_GUIDES = True
 
 Liner: "Line"
 
@@ -142,27 +144,83 @@ def draw_lines(cfunc: ida_hexrays.cfunc_t):
 		line.line = line.line.replace(Liner.GAP, Liner.LINE, indents[i]).replace(Liner.LINE, Liner.GAP, n)
 
 
+ACTION_NAME = "idaguides:toggle"
+
+class ToggleGuidesHandler(ida_kernwin.action_handler_t):
+	def __init__(self):
+		ida_kernwin.action_handler_t.__init__(self)
+
+	def activate(self, ctx):
+		global ENABLE_GUIDES
+		ENABLE_GUIDES = not ENABLE_GUIDES
+		status = "Enabled" if ENABLE_GUIDES else "Disabled"
+		print(f"[IDA Guides] {status}")
+		
+		widget = ida_kernwin.get_current_widget()
+		if widget:
+			vdui = ida_hexrays.get_widget_vdui(widget)
+			if vdui:
+				vdui.refresh_view(True)
+		return 1
+
+	def update(self, ctx):
+		return ida_kernwin.AST_ENABLE_ALWAYS
+
+
 class IDAGuides(ida_hexrays.Hexrays_Hooks):
 	def __init__(self):
 		super().__init__()
 
 	def func_printed(self, cfunc: ida_hexrays.cfunc_t) -> int:
-		draw_lines(cfunc)
+		if ENABLE_GUIDES:
+			draw_lines(cfunc)
+		return 0
+
+	def populating_popup(self, widget, popup, vdui):
+		ida_kernwin.attach_action_to_popup(widget, popup, ACTION_NAME, None)
 		return 0
 
 
 class IDAGuides_Plugin(idaapi.plugin_t):
-	wanted_name = "IDA Guides"
-	flags = idaapi.PLUGIN_HIDE
+	wanted_name = "IDA Guides Toggle"
+	wanted_hotkey = "Ctrl-Shift-J"
+	flags = 0
 
 	def init(self):
 		if not idaapi.init_hexrays_plugin():
 			return idaapi.PLUGIN_SKIP
 
+		desc = ida_kernwin.action_desc_t(
+			ACTION_NAME,
+			"IDA Guides Toggle",
+			ToggleGuidesHandler(),
+			"",
+			"Toggle HexRays indention",
+			-1
+		)
+		ida_kernwin.register_action(desc)
+
 		init_liner()
 		self.hook = IDAGuides() # type: ignore
 		self.hook.hook()
 		return idaapi.PLUGIN_KEEP
+
+	def run(self, arg):
+		global ENABLE_GUIDES
+		ENABLE_GUIDES = not ENABLE_GUIDES
+		status = "Enabled" if ENABLE_GUIDES else "Disabled"
+		print(f"[IDA Guides] {status}")
+		
+		widget = ida_kernwin.get_current_widget()
+		if widget:
+			vdui = ida_hexrays.get_widget_vdui(widget)
+			if vdui:
+				vdui.refresh_view(True)
+
+	def term(self):
+		ida_kernwin.unregister_action(ACTION_NAME)
+		if hasattr(self, 'hook'):
+			self.hook.unhook()
 
 
 def PLUGIN_ENTRY():
