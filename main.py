@@ -3,11 +3,14 @@ import ida_lines
 import ida_diskio
 import ida_kernwin
 import idaapi
+import json
 from pathlib import Path
 
 
-INDENT_CHAR = "┊"
+INDENT_CHAR = "¦"
 ENABLE_GUIDES = True
+ACTION_NAME = "hx:ToggleGuides"
+CFG: dict | None = None
 
 Liner: "Line"
 
@@ -42,6 +45,20 @@ def get_usr_indent() -> int:
 				pass
 
 	return 2
+
+
+def load_save_cfg(save = False):
+	global ENABLE_GUIDES, CFG
+	p = Path(__file__).parent / "ida-plugin.json"
+	if not save:
+		with open(p) as fh:
+			i = fh.read()
+		CFG = json.loads(i)
+		ENABLE_GUIDES = CFG.get("ENABLED", True)
+	else:
+		CFG["ENABLED"] = ENABLE_GUIDES
+		with open(p, "w") as fh:
+			fh.write(json.dumps(CFG, indent=4))
 
 
 def count_indents(lines: list[str]) -> list[int]:
@@ -144,23 +161,22 @@ def draw_lines(cfunc: ida_hexrays.cfunc_t):
 		line.line = line.line.replace(Liner.GAP, Liner.LINE, indents[i]).replace(Liner.LINE, Liner.GAP, n)
 
 
-ACTION_NAME = "idaguides:toggle"
-
-class ToggleGuidesHandler(ida_kernwin.action_handler_t):
+class IDAGuides_ActionHandler(ida_kernwin.action_handler_t):
 	def __init__(self):
 		ida_kernwin.action_handler_t.__init__(self)
 
 	def activate(self, ctx):
 		global ENABLE_GUIDES
 		ENABLE_GUIDES = not ENABLE_GUIDES
-		status = "Enabled" if ENABLE_GUIDES else "Disabled"
-		print(f"[IDA Guides] {status}")
+		label = "Hide indent guides" if ENABLE_GUIDES else "Show indent guides"
+		ida_kernwin.update_action_label(ACTION_NAME, label)
 		
 		widget = ida_kernwin.get_current_widget()
 		if widget:
 			vdui = ida_hexrays.get_widget_vdui(widget)
 			if vdui:
 				vdui.refresh_view(True)
+
 		return 1
 
 	def update(self, ctx):
@@ -182,20 +198,21 @@ class IDAGuides(ida_hexrays.Hexrays_Hooks):
 
 
 class IDAGuides_Plugin(idaapi.plugin_t):
-	wanted_name = "IDA Guides Toggle"
-	wanted_hotkey = "Ctrl-Shift-J"
-	flags = 0
+	wanted_name = "IDA Guides"
+	flags = idaapi.PLUGIN_HIDE
 
 	def init(self):
 		if not idaapi.init_hexrays_plugin():
 			return idaapi.PLUGIN_SKIP
 
+		load_save_cfg()
+		label = "Hide indent guides" if ENABLE_GUIDES else "Show indent guides"
 		desc = ida_kernwin.action_desc_t(
 			ACTION_NAME,
-			"IDA Guides Toggle",
-			ToggleGuidesHandler(),
+			label,
+			IDAGuides_ActionHandler(),
 			"",
-			"Toggle HexRays indention",
+			"",
 			-1
 		)
 		ida_kernwin.register_action(desc)
@@ -208,8 +225,6 @@ class IDAGuides_Plugin(idaapi.plugin_t):
 	def run(self, arg):
 		global ENABLE_GUIDES
 		ENABLE_GUIDES = not ENABLE_GUIDES
-		status = "Enabled" if ENABLE_GUIDES else "Disabled"
-		print(f"[IDA Guides] {status}")
 		
 		widget = ida_kernwin.get_current_widget()
 		if widget:
@@ -219,8 +234,9 @@ class IDAGuides_Plugin(idaapi.plugin_t):
 
 	def term(self):
 		ida_kernwin.unregister_action(ACTION_NAME)
-		if hasattr(self, 'hook'):
+		if hasattr(self, "hook"):
 			self.hook.unhook()
+		load_save_cfg(True)
 
 
 def PLUGIN_ENTRY():
