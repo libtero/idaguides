@@ -15,8 +15,3 @@ Small plugin for IDA that adds indent guides to the decompiler view.
 ## Tested With
 
 - IDA 9.2, 9.3
-
-
-## Notes
-
-The plugin reads the indent level from `hexrays.cfg` (default: 2) and reapplies it on load. Changing the decompiler’s indent setting afterward will cause guides to display incorrectly.
